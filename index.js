@@ -23,6 +23,12 @@ app.use(cors({
   }
 }));
 
+app.use('/api/auth', (req, res) => {
+  // Placeholder for authentication routes
+  res.status(201).send('Authentication routes');
+});
+
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Server Error');
@@ -31,3 +37,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+export default app;

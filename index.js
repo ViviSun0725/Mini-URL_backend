@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import authRoutes from './src/routes/auth.js';
+import urlsRoutes from './src/routes/urls.js';
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ app.use(cors({
 }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/urls', urlsRoutes);
+
 
 
 app.use((err, req, res, next) => {

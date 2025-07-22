@@ -1,9 +1,13 @@
+import dotenv from 'dotenv'
+dotenv.config({ path: '.env.test' })
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../index.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from '../src/configs/prisma.js'
 
-const prisma = new PrismaClient();
+
+const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:5173'; 
+
 
 beforeAll(() => {});
 
@@ -152,6 +156,49 @@ describe("Mini URL API", () => {
       expect(res.text).toEqual("URL not found or inactive");
     });
   });
+
+  describe("Password Protection", () => {
+    const password = "test-password";
+    let hashedPassword;
+    let protectedShortCode;
+    let authToken;
+    let userId;
+
+    beforeEach(async () => {
+      await prisma.url.deleteMany({});
+      await prisma.user.deleteMany({});
+
+      const registerRes = await request(app).post("/api/auth/register").send({
+        email: "authuser_protected@example.com",
+        password: "password123",
+      });
+      userId = registerRes.body.userId;
+
+      const loginRes = await request(app).post("/api/auth/login").send({
+        email: "authuser_protected@example.com",
+        password: "password123",
+      });
+      authToken = loginRes.body.token;
+
+      hashedPassword = await bcrypt.hash(password, 10);
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https://protected.com",
+          shortCode: "protected",
+          password: hashedPassword,
+        },
+      });
+      protectedShortCode = url.shortCode;
+    });
+
+    it("should redirect to the protected link page for a password-protected URL", async () => {
+      const res = await request(app).get(`/${protectedShortCode}`);
+      expect(res.statusCode).toEqual(302);
+      expect(res.headers.location).toEqual(
+        `${frontendBase}/protected-link/${protectedShortCode}`
+      );
+    });
+  });
 });
 
 /*
@@ -173,4 +220,5 @@ describe("Mini URL API", () => {
     should redirect to the original URL for a valid short code
     should return 404 for a non-existent short code
     should return 404 if the URL is inactive
+  Password Protection
 */

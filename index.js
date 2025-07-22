@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 
 import authRoutes from './src/routes/auth.js';
 import urlsRoutes from './src/routes/urls.js';
+import pageRoutes from './src/routes/page.js';
 import redirectRoutes from './src/routes/redirect.js';
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use(cors({
 
 app.use('/api/auth', authRoutes);
 app.use('/api/urls', urlsRoutes);
+app.use('/api/page', pageRoutes);
 app.use('/', redirectRoutes);
 
 

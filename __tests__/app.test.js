@@ -1,31 +1,48 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import request from 'supertest';
-import app from '../index.js';
-import { PrismaClient } from '../src/generated/prisma';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import request from "supertest";
+import app from "../index.js";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-beforeAll(() => {
-
-});
+beforeAll(() => {});
 
 afterAll(async () => {
   await prisma.$disconnect();
 });
 
+beforeEach(async () => {
+  // Clean the database before each test
+  await prisma.url.deleteMany();
+  await prisma.user.deleteMany();
+});
+
 describe("Mini URL API", () => {
   describe("User Authentication", () => {
-    it('should refister a new user', async () => {
-      const res = await request(app)
-        .post('/api/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: 'password123'
-        });
+    it("should register a new user", async () => {
+      const res = await request(app).post("/api/auth/register").send({
+        email: "test@example.com",
+        password: "password123",
+      });
       expect(res.statusCode).toEqual(201);
-      expect(res.body).toHaveProperty('message', 'User registered successfully');
-      expect(res.body).toHaveProperty('userId');
+      expect(res.body).toHaveProperty(
+        "message",
+        "User registered successfully"
+      );
+      expect(res.body).toHaveProperty("userId");
     });
+  });
+  it("should not register a user with an existing email", async () => {
+    await request(app).post("/api/auth/register").send({
+      email: "test@example.com",
+      password: "password123",
+    });
+    const res = await request(app).post("/api/auth/register").send({
+      email: "test@example.com",
+      password: "anotherpassword",
+    });
+    expect(res.statusCode).toEqual(409);
+    expect(res.body.error).toEqual("User with this email already exists.");
   });
 });
 

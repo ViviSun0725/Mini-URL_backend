@@ -115,6 +115,8 @@ router.post(
   }
 );
 
+
+// Get URL details (for frontend to check password status and description)
 router.get("/url-details/:shortCode", async (req, res) => {
   const { shortCode } = req.params;
   try {
@@ -142,6 +144,41 @@ router.get("/url-details/:shortCode", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
+  }
+});
+
+// Password verification for protected URLs
+router.post('/verify-password', passwordVerifyLimiter, [
+  body('shortCode').isLength({ min:1}).withMessage('Short code is required'),
+  body('password').isLength({min: 1}).withMessage('Password is required'),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { shortCode, password } = req.body;
+
+  try {
+    const url = await prisma.url.findFirst({
+      where: {
+        OR: [{ shortCode: shortCode }, { customShortCode: shortCode }],
+      },
+    });
+
+    if (!url || !url.password) {
+      return res.status(404).send('URL not found or does not require a password');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, url.password);
+    if (isPasswordValid) {
+      res.json({ originalUrl: url.originalUrl});
+    } else {
+      res.status(401).send('Incorrect password')
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 export default router;

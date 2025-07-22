@@ -1,6 +1,7 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import app from '../index.js';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma';
 
 const prisma = new PrismaClient();
 
@@ -27,3 +28,13 @@ describe("Mini URL API", () => {
     });
   });
 });
+
+/*
+ Mini URL API 
+  User Authentication
+    should register a new use
+    should not register a user with an existing email
+    should log in an existing user and return a token
+    should not log in with incorrect credentials
+    should not log in with non-existent email
+*/

@@ -6,7 +6,9 @@
   "scripts": {
     "test": "vitest",
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "generate": "npx prisma generate",
+    "migrate": "npx prisma migrate dev --name init"
   },
   "author": "Vivi",
   "license": "ISC",

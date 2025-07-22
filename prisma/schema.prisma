@@ -22,7 +22,7 @@ model User {
 }
 
 model Url {
-  Id              Int      @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   originalUrl     String
   shortCode       String   @unique
   customShortCode String?  @unique

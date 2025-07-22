@@ -24,7 +24,7 @@ const passwordVerifyLimiter = rateLimit({
   message: "Too many requests, please try again after 15 minutes",
 });
 
-// URL Shortening
+// Create a short URL
 router.post(
   "/shorten",
   authenticateToken,
@@ -115,6 +115,37 @@ router.post(
   }
 );
 
+// Get all URLs for the authenticated user
+router.get("/my-urls", authenticateToken, async (req, res) => {
+  try {
+    const urls = await prisma.url.findMany({
+      where: {
+        userId: req.user.userId,
+      },
+      select: {
+        id: true,
+        originalUrl: true,
+        shortCode: true,
+        customShortCode: true,
+        description: true,
+        isActive: true,
+        createdAt: true,
+        password: true,
+      },
+    });
+    
+    const responseUrls = urls.map(({password, ...rest}) => {
+      return {
+        ...rest,
+        requiresPassword: !!password, // Indicate if the URL is password-protected
+      };
+    });
+    res.json(responseUrls);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error" });
+  }
+})
 
 // Get URL details (for frontend to check password status and description)
 router.get("/url-details/:shortCode", async (req, res) => {

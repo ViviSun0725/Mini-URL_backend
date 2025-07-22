@@ -53,7 +53,8 @@ router.post(
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const { originalUrl, customShortCode, password, description, isActive } = req.body;
+    const { originalUrl, customShortCode, password, description, isActive } =
+      req.body;
 
     let finalShortCode = customShortCode;
     if (customShortCode) {
@@ -75,7 +76,7 @@ router.post(
     }
 
     try {
-      const userId = req.user.userId; 
+      const userId = req.user.userId;
 
       // Check if custom short code already exists for the user
       if (customShortCode) {
@@ -114,5 +115,33 @@ router.post(
   }
 );
 
+router.get("/url-details/:shortCode", async (req, res) => {
+  const { shortCode } = req.params;
+  try {
+    const url = await prisma.url.findFirst({
+      where: {
+        OR: [{ shortCode: shortCode }, { customShortCode: shortCode }],
+      },
+      select: {
+        originalUrl: true,
+        password: true,
+        description: true,
+        isActive: true,
+      },
+    });
 
+    if (!url || !url.isActive) {
+      return res.status(404).json({ error: "URL not found or inactive." });
+    }
+
+    res.status(200).json({
+      originalUrl: url.originalUrl,
+      requiresPassword: !!url.password,
+      description: url.description,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
 export default router;

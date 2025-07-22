@@ -83,7 +83,7 @@ describe("Mini URL API", () => {
   describe("POST /api/urls/shorten", () => {
     let authToken;
     let userId;
-    
+
     beforeEach(async () => {
       await prisma.url.deleteMany({}); // Clean URLs before each test
       await prisma.user.deleteMany({}); // Clean users before each test
@@ -117,6 +117,41 @@ describe("Mini URL API", () => {
       expect(urlInDb.userId).toEqual(userId);
     });
   });
+
+  describe("GET /:shortCode", () => {
+    it("should redirect to the original URL for a valid short code", async () => {
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https:github.com",
+          shortCode: "github",
+        },
+      });
+
+      const res = await request(app).get(`/${url.shortCode}`);
+      expect(res.statusCode).toEqual(302);
+      expect(res.header.location).toEqual(url.originalUrl);
+    });
+
+    it("should return 404 for a non-existent short code", async () => {
+      const res = await request(app).get("/nonexistentcode");
+      expect(res.statusCode).toEqual(404);
+      expect(res.text).toEqual("URL not found or inactive");
+    });
+
+    it("should return 404 for an inactive URL", async () => {
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https://example.com",
+          shortCode: "inactive",
+          isActive: false,
+        },
+      });
+
+      const res = await request(app).get(`/${url.shortCode}`);
+      expect(res.statusCode).toEqual(404);
+      expect(res.text).toEqual("URL not found or inactive");
+    });
+  });
 });
 
 /*
@@ -134,4 +169,8 @@ describe("Mini URL API", () => {
     should return 409 if custom short code is already in use by the same user
     should fail if originalUrl is missing for authenticated user
     should create a url with description and isActive status for authenticated user
+  GET /:shortCode
+    should redirect to the original URL for a valid short code
+    should return 404 for a non-existent short code
+    should return 404 if the URL is inactive
 */

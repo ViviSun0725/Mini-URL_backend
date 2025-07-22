@@ -12,7 +12,6 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // Clean the database before each test
   await prisma.url.deleteMany();
   await prisma.user.deleteMany();
 });
@@ -31,19 +30,57 @@ describe("Mini URL API", () => {
       );
       expect(res.body).toHaveProperty("userId");
     });
-  });
-  it("should not register a user with an existing email", async () => {
-    await request(app).post("/api/auth/register").send({
-      email: "test@example.com",
-      password: "password123",
+
+    it("should not register a user with an existing email", async () => {
+      await request(app).post("/api/auth/register").send({
+        email: "test@example.com",
+        password: "password123",
+      });
+      const res = await request(app).post("/api/auth/register").send({
+        email: "test@example.com",
+        password: "anotherpassword",
+      });
+      expect(res.statusCode).toEqual(409);
+      expect(res.body.error).toEqual("User with this email already exists.");
     });
-    const res = await request(app).post("/api/auth/register").send({
-      email: "test@example.com",
-      password: "anotherpassword",
+    it("should log in an exitsting user and return a token", async () => {
+      await request(app).post("/api/auth/register").send({
+        email: "login@example.com",
+        password: "password123",
+      });
+      const res = await request(app).post("/api/auth/login").send({
+        email: "login@example.com",
+        password: "password123",
+      });
+      expect(res.statusCode).toEqual(200);
+      expect(res.body.message).toEqual("Logged in successfully.");
+      expect(res.body).toHaveProperty("token");
     });
-    expect(res.statusCode).toEqual(409);
-    expect(res.body.error).toEqual("User with this email already exists.");
+
+    it("should not log in with incorrect credentials", async () => {
+      await request(app).post("/api/auth/register").send({
+        email: "wrongpass@example.com",
+        password: "password123",
+      });
+      const res = await request(app).post("/api/auth/login").send({
+        email: "wrongpass@example.com",
+        password: "wrongpassword",
+      });
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.error).toEqual("Invalid email or password");
+    });
+
+    it("should not log in with non-existent email", async () => {
+      const res = await request(app).post("/api/auth/login").send({
+        email: "nonexistent@example.com",
+        password: "password123",
+      });
+      expect(res.statusCode).toEqual(401);
+      expect(res.body.error).toEqual("Invalid email or password");
+    });
   });
+
+  
 });
 
 /*

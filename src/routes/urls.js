@@ -115,33 +115,6 @@ router.post(
   }
 );
 
-// Delete a URL for the authenticated user
-router.delete("/:id", authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  try {
-    const url = await prisma.url.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!url) {
-      return res.status(404).json({ error: "URL not found" });
-    }
-
-    if (url.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    await prisma.url.delete({
-      where: { id: url.id },
-    });
-
-    res.json({ message: "URL deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
-
 // Get all URLs for the authenticated user
 router.get("/my-urls", authenticateToken, async (req, res) => {
   try {
@@ -173,6 +146,36 @@ router.get("/my-urls", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+// Delete a URL for the authenticated user
+router.delete("/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const url = await prisma.url.findUnique({
+      where: { id: parseInt(id) },
+    });
+
+    if (!url) {
+      return res.status(404).json({ error: "URL not found" });
+    }
+
+    if (url.userId !== req.user.userId) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    await prisma.url.delete({
+      where: { id: url.id },
+    });
+
+    res.json({ message: "URL deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 
 // Get URL details (for frontend to check password status and description)
 router.get("/url-details/:shortCode", async (req, res) => {

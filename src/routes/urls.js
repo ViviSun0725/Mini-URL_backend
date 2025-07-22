@@ -55,7 +55,7 @@ router.post(
     }
     const { originalUrl, customShortCode, password, description, isActive } = req.body;
 
-    let finalShortCode;
+    let finalShortCode = customShortCode;
     if (customShortCode) {
       const existingUrl = await prisma.url.findUnique({
         where: { shortCode: customShortCode },
@@ -75,12 +75,12 @@ router.post(
     }
 
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId; 
 
       // Check if custom short code already exists for the user
       if (customShortCode) {
         const existingUrl = await prisma.url.findUnique({
-          where: { shortCode, userId },
+          where: { shortCode: customShortCode, userId },
         });
         if (existingUrl) {
           return res
@@ -106,7 +106,7 @@ router.post(
 
       res
         .status(200)
-        .json({ message: "URL shortened successfully", shortUrl: newUrl });
+        .json({ message: "URL shortened successfully", shortUrl: shortUrl });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Server error" });

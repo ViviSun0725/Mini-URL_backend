@@ -147,6 +147,63 @@ router.get("/my-urls", authenticateToken, async (req, res) => {
   }
 });
 
+// Update a URL for the authenticated user
+router.put("/:id", authenticateToken, [
+  body("originalUrl").optional().isURL().withMessage("Invalid URL format"),
+  body("isActive").optional().isBoolean().withMessage("isActive must be a boolean"),
+  body("description")
+    .optional()
+    .isString()
+    .withMessage("Description must be a string"),
+  body("password").optional({ checkFalsy: true}).isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.error("Validation errors for URL update:", errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { id } = req.params;
+  const { originalUrl, isActive, description, password } = req.body;
+
+  try {
+    const url = await prisma.url.findUnique({
+      where: { id: parseInt(id)}
+    })
+
+    if (!url) {
+      return res.status(404).json({ error: "URL not found" });
+    }
+
+    if (url.userId !== req.user.userId) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    let hashedPassword = url.password;
+    if (password !== undefined) { // Check if password field was sent in the request
+      if (password) { // If password is not empty, hash and update
+        hashedPassword = await bcrypt.hash(password, 10);
+      } else { // If password is explicitly empty, set to null (remove password)
+        hashedPassword = null;
+      }
+    }
+
+    const updatedUrl = await prisma.url.update({
+      where: { id: url.id},
+      data: {
+        originalUrl: originalUrl || url.originalUrl,
+        description: description !== undefined ? description : url.description,
+        isActive: isActive !== undefined ? isActive : url.isActive,
+        password: hashedPassword,
+      },
+    });
+
+    res.json({ message: "URL updated successfully", url: updatedUrl});
+  } catch (err) {
+    console.error("Error updating URL:", err);
+    res.status(500).json({ error: "Server error during URL update." });
+  }
+});
 
 // Delete a URL for the authenticated user
 router.delete("/:id", authenticateToken, async (req, res) => {

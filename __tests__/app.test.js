@@ -3,7 +3,8 @@ dotenv.config({ path: '.env.test' })
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../index.js";
-import prisma from '../src/configs/prisma.js'
+import prisma from '../src/configs/prisma.js';
+import bcrypt from "bcrypt";
 
 
 const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:5173'; 
@@ -123,7 +124,7 @@ describe("Mini URL API", () => {
   });
 
   describe("GET /:shortCode", () => {
-    it("should redirect to the original URL for a valid short code", async () => {
+    it("should redirect to the frontend rediract page for a valid short code", async () => {
       const url = await prisma.url.create({
         data: {
           originalUrl: "https:github.com",
@@ -133,7 +134,7 @@ describe("Mini URL API", () => {
 
       const res = await request(app).get(`/${url.shortCode}`);
       expect(res.statusCode).toEqual(302);
-      expect(res.header.location).toEqual(url.originalUrl);
+      expect(res.header.location).toEqual(`${frontendBase}/${url.shortCode}`);
     });
 
     it("should return 404 for a non-existent short code", async () => {
@@ -200,25 +201,3 @@ describe("Mini URL API", () => {
     });
   });
 });
-
-/*
- Mini URL API 
-  User Authentication
-    should register a new use
-    should not register a user with an existing email
-    should log in an existing user and return a token
-    should not log in with incorrect credentials
-    should not log in with non-existent email
-  POST /api/urls/shorten
-    should create a new short URL for an authenticated user
-    should not create a short URL without authentication
-    should create a new custom short URL for an authenticated user
-    should return 409 if custom short code is already in use by the same user
-    should fail if originalUrl is missing for authenticated user
-    should create a url with description and isActive status for authenticated user
-  GET /:shortCode
-    should redirect to the original URL for a valid short code
-    should return 404 for a non-existent short code
-    should return 404 if the URL is inactive
-  Password Protection
-*/

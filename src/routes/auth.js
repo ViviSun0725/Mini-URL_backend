@@ -2,10 +2,8 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import prisma from '../configs/prisma.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import getPrismaClient from '../configs/prisma.js';
+const prisma = getPrismaClient();
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;

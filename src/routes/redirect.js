@@ -1,8 +1,6 @@
 import express from "express";
-import prisma from "../configs/prisma.js";
-import dotenv from "dotenv";
-
-dotenv.config();
+import getPrismaClient from "../configs/prisma.js";
+const prisma = getPrismaClient();
 
 const router = express.Router();
 const frontendUrl = process.env.FRONTEND_BASE_URL || "http://localhost:5173";

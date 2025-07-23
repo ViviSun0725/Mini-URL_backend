@@ -2,12 +2,12 @@ import express from "express";
 import { body, validationResult } from "express-validator";
 import { customAlphabet } from "nanoid";
 import bcrypt from "bcrypt";
-import prisma from "../configs/prisma.js";
-import dotenv from "dotenv";
+import getPrismaClient from "../configs/prisma.js";
+const prisma = getPrismaClient();
 import authenticateToken from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 
-dotenv.config();
+
 const nanoid = customAlphabet("1234567890abcdef", 7);
 
 const router = express.Router();

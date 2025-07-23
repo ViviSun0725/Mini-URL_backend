@@ -1,9 +1,9 @@
-import dotenv from 'dotenv'
-dotenv.config({ path: '.env.test' })
+
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../index.js";
-import prisma from '../src/configs/prisma.js';
+import getPrismaClient from '../src/configs/prisma.js';
+const prisma = getPrismaClient();
 import bcrypt from "bcrypt";
 
 

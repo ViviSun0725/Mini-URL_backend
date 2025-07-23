@@ -2,6 +2,8 @@
 
 This is the backend service for the Mini URL application. It provides RESTful APIs for user authentication, URL shortening, redirection, and management.
 
+You can try it out at [Mini URL](https://miniurl.zeabur.app/)
+
 For the frontend service, visit the [Mini URL Frontend](https://github.com/ViviSun0725/Mini-URL_frontend) repository.
 
 ## Table of Contents

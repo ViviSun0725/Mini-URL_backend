@@ -246,7 +246,7 @@ router.delete("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Get URL details (for frontend to check password status and description)
+// Get URL details (for frontend to check password status and description to on redirect page)
 router.get("/url-details/:shortCode", async (req, res) => {
   const { shortCode } = req.params;
   try {

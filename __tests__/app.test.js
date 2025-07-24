@@ -155,28 +155,17 @@ describe("Mini URL API", () => {
     });
   });
 
-  describe("POST /api/urls/verify-password (Password Varification for URLs)", () => {
+  describe("POST /api/urls/verify-password (Password Varification for URLs)", async () => {
     const password = "test-password";
-    let hashedPassword;
+    const hashedPassword = await bcrypt.hash(password, 10);
     let protectedShortCode;
+    let userId;
+    let authToken;
 
     beforeEach(async () => {
       await prisma.url.deleteMany({});
       await prisma.user.deleteMany({});
 
-      const registerRes = await request(app).post("/api/auth/register").send({
-        email: "authuser_protected@example.com",
-        password: "password123",
-      });
-      userId = registerRes.body.userId;
-
-      const loginRes = await request(app).post("/api/auth/login").send({
-        email: "authuser_protected@example.com",
-        password: "password123",
-      });
-      authToken = loginRes.body.token;
-
-      hashedPassword = await bcrypt.hash(password, 10);
       const url = await prisma.url.create({
         data: {
           originalUrl: "https://protected.com",
@@ -234,13 +223,62 @@ describe("Mini URL API", () => {
       });
       const res = await request(app).post(`/api/urls/verify-password`).send({
         shortCode: url.shortCode,
-        password: password
+        password: password,
       });
       expect(res.statusCode).toEqual(404);
       expect(res.text).toEqual("URL not found or does not require a password");
     });
   });
-  describe.todo("Get URL details for frontend to check password status and description")
+  describe("GET /api/urls/url-details/:shortCode (for frontend to check password status and description)", async () => {
+    const password = "test-password";
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    beforeEach(async () => {
+      await prisma.url.deleteMany({});
+      await prisma.user.deleteMany({});
+    });
+
+    it("should get URL details for a protected link", async () => {
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https://protected.com",
+          shortCode: "protected",
+          description: "I am protected",
+          password: hashedPassword,
+        },
+      });
+      const res = await request(app).get(
+        `/api/urls/url-details/${url.shortCode}`
+      );
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty("description");
+      expect(res.body).toHaveProperty("requiresPassword");
+      expect(res.body.requiresPassword).toBe(true);
+    });
+    it("should get URL details for an unportected link", async () => {
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https://not-protected.com",
+          shortCode: "not-protected",
+          description: "I am not protected",
+        },
+      });
+
+      const res = await request(app).get(
+        `/api/urls/url-details/${url.shortCode}`
+      );
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty("description");
+      expect(res.body).toHaveProperty("requiresPassword");
+      expect(res.body.requiresPassword).toBe(false);
+    });
+    it("should return 404 for non-existent shortcode", async () => {
+      const res = await request(app).get(
+        `/api/urls/url-details/nonexistent-shortCode`
+      );
+      expect(res.statusCode).toEqual(404);
+    });
+  });
   describe.todo("URL Details and Management (Authenticated) (CRUD)");
   describe.todo("GET /api/page/page-details");
 });

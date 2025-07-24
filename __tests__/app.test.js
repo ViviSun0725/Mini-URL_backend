@@ -1,14 +1,11 @@
-
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../index.js";
-import getPrismaClient from '../src/configs/prisma.js';
+import getPrismaClient from "../src/configs/prisma.js";
 const prisma = getPrismaClient();
 import bcrypt from "bcrypt";
 
-
-const frontendBase = process.env.FRONTEND_BASE_URL || 'http://localhost:5173'; 
-
+const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
 
 beforeAll(() => {});
 
@@ -158,12 +155,10 @@ describe("Mini URL API", () => {
     });
   });
 
-  describe("Password Protection", () => {
+  describe("POST /api/urls/verify-password (Password Varification for URLs)", () => {
     const password = "test-password";
     let hashedPassword;
     let protectedShortCode;
-    let authToken;
-    let userId;
 
     beforeEach(async () => {
       await prisma.url.deleteMany({});
@@ -199,5 +194,53 @@ describe("Mini URL API", () => {
         `${frontendBase}/protected-link/${protectedShortCode}`
       );
     });
+
+    it("should return the original URL with correct password", async () => {
+      const res = await request(app).post(`/api/urls/verify-password`).send({
+        shortCode: protectedShortCode,
+        password: password,
+      });
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty("originalUrl");
+      expect(res.body.originalUrl).toBe("https://protected.com");
+    });
+    it("should return 401 for incorrect password", async () => {
+      const res = await request(app).post(`/api/urls/verify-password`).send({
+        shortCode: protectedShortCode,
+        password: "incorrect-password",
+      });
+      expect(res.statusCode).toEqual(401);
+    });
+    it("should fail if shortCode is missing", async () => {
+      const res = await request(app).post(`/api/urls/verify-password`).send({
+        password: password,
+      });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.errors[0].msg).toEqual("Short code is required");
+    });
+    it("should fail if password is missing", async () => {
+      const res = await request(app).post(`/api/urls/verify-password`).send({
+        shortCode: protectedShortCode,
+      });
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.errors[0].msg).toEqual("Password is required");
+    });
+    it("should fail for a url without a password", async () => {
+      const url = await prisma.url.create({
+        data: {
+          originalUrl: "https://not-protected.com",
+          shortCode: "not-protected",
+        },
+      });
+      const res = await request(app).post(`/api/urls/verify-password`).send({
+        shortCode: url.shortCode,
+        password: password
+      });
+      expect(res.statusCode).toEqual(404);
+      expect(res.text).toEqual("URL not found or does not require a password");
+    });
   });
+  describe.todo("Get URL details for frontend to check password status and description")
+  describe.todo("URL Details and Management (Authenticated) (CRUD)");
+  describe.todo("GET /api/page/page-details");
 });

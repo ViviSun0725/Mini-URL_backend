@@ -1,7 +1,6 @@
 import express from "express";
 import { query, validationResult } from "express-validator";
-import fetch from "node-fetch";
-import { load } from "cheerio";
+import * as cheerio from 'cheerio';
 
 const router = express.Router();
 
@@ -16,9 +15,7 @@ router.get(
     const { url } = req.query;
 
     try {
-      const response = await fetch(url);
-      const html = await response.text();
-      const $ = load(html);
+      const $ = await cheerio.fromURL(url)
 
       const title = $("title").text();
       const description =
@@ -37,3 +34,8 @@ router.get(
 );
 
 export default router;
+
+/**
+ * TODO:
+ * Move this functionality to frontend. This doesn't need a API call to backend.
+ */

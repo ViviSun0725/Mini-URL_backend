@@ -279,6 +279,173 @@ describe("Mini URL API", () => {
       expect(res.statusCode).toEqual(404);
     });
   });
-  describe.todo("URL Details and Management (Authenticated) (CRUD)");
+  describe("URL Details and Management (Authenticated) (CRUD)", async () => {
+    let userId;
+    let userAuthToken;
+    let anotherUserId;
+    let anotherUserAuthToken;
+    let urlId;
+
+    beforeEach(async () => {
+      await prisma.url.deleteMany({});
+      await prisma.user.deleteMany({});
+      const userRes = await request(app).post("/api/auth/register").send({
+        email: "user@example.com",
+        password: "password123",
+      });
+      userId = userRes.body.userId;
+
+      const userLoginRes = await request(app).post("/api/auth/login").send({
+        email: "user@example.com",
+        password: "password123",
+      });
+      userAuthToken = userLoginRes.body.token;
+
+      const anotherUserRes = await request(app)
+        .post("/api/auth/register")
+        .send({
+          email: "anotherUser@example.com",
+          password: "password123",
+        });
+      anotherUserId = anotherUserRes.body.userId;
+
+      const anotherUserLoginRes = await request(app)
+        .post("/api/auth/login")
+        .send({
+          email: "anotherUser@example.com",
+          password: "password123",
+        });
+      anotherUserAuthToken = anotherUserLoginRes.body.token;
+    });
+    describe("PUT /api/urls/:id", () => {
+      it("should return 401 if no token was provided", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        const payload = {
+          description: "Google",
+        };
+        const res = await request(app).put(`/api/urls/${urlId}`).send(payload);
+        expect(res.statusCode).toEqual(401);
+        expect(res.body.error).toEqual("Authentication token required.");
+      });
+
+      it("soulld return 404 if the URL doesn't exist", async () => {
+        const payload = {
+          description: "Google",
+        };
+        const res = await request(app)
+          .put(`/api/urls/999999999`)
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(404);
+      });
+      it("should return 403 when trying to update a URL not owned by the user", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        const payload = {
+          description: "Google",
+        };
+        const res = await request(app)
+          .put(`/api/urls/${urlId}`)
+          .set("Authorization", `Bearer ${anotherUserAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(403);
+      });
+
+      it("should be able to update originalURL field", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        const newUrl = "https://www.youtube.com/";
+        const payload = {
+          originalUrl: newUrl,
+        };
+        const res = await request(app)
+          .put(`/api/urls/${urlId}`)
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.url.originalUrl).toEqual(newUrl);
+      });
+      it.todo("should be able to update customShortCode field", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        const newCode = "google";
+        const payload = {
+          customShortCode: newCode,
+        };
+        const res = await request(app)
+          .put(`/api/urls/${urlId}`)
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.url.customShortCode).toEqual(newCode);
+      });
+      it("should be able to update description field", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        const newDescription = "https://www.youtube.com/";
+        const payload = {
+          description: newDescription,
+        };
+
+        const res = await request(app)
+          .put(`/api/urls/${urlId}`)
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.url.description).toEqual(newDescription);
+      });
+      it("should be able to update isActive field", async () => {
+        const urlRes = await request(app)
+          .post("/api/urls/shorten")
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send({
+            originalUrl: "https://google.com",
+          });
+        const urlId = urlRes.body.id;
+        let newIsActive = false;
+        const payload = {
+          isActive: newIsActive,
+        };
+        const res = await request(app)
+          .put(`/api/urls/${urlId}`)
+          .set("Authorization", `Bearer ${userAuthToken}`)
+          .send(payload);
+        expect(res.statusCode).toEqual(200);
+        expect(res.body.url.isActive).toEqual(false);
+      });
+    });
+  });
   describe.todo("GET /api/page/page-details");
 });
+
+/**
+ * TODO:
+ * split tests into different test files
+ * test input data types using zod
+ */

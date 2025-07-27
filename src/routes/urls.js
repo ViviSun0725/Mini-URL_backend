@@ -13,7 +13,7 @@ const router = express.Router();
 
 const shortenLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 10,
   message: "Too many requests, please try again after 15 minutes",
 });
 
@@ -35,7 +35,7 @@ router.post(
       .isLength({ min: 3, max: 10 })
       .withMessage("Custom short code must be between 3 and 10 characters"),
     body("description")
-      .optional({values: 'null'})
+      .optional({ values: "null" })
       .isString()
       .withMessage("Description must be a string"),
     body("password")
@@ -106,7 +106,11 @@ router.post(
 
       res
         .status(200)
-        .json({ message: "URL shortened successfully", shortUrl: shortUrl });
+        .json({
+          message: "URL shortened successfully",
+          shortUrl: shortUrl,
+          id: newUrl.id,
+        });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Server error" });
@@ -157,7 +161,7 @@ router.put(
       .isBoolean()
       .withMessage("isActive must be a boolean"),
     body("description")
-      .optional({ values: 'null' })
+      .optional({ values: "null" })
       .isString()
       .withMessage("Description must be a string"),
     body("password")

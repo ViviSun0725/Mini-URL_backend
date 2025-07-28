@@ -1,6 +1,6 @@
 import express from "express";
 import { query } from "express-validator";
-import { getPageDetails } from "../controllers/pageController";
+import { getPageDetails } from "../controllers/pageController.js";
 
 const router = express.Router();
 

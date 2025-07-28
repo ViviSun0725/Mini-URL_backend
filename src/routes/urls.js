@@ -1,6 +1,5 @@
 import express from "express";
 import { body } from "express-validator";
-import { customAlphabet } from "nanoid";
 import authenticateToken from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 import {
@@ -11,8 +10,6 @@ import {
   getUrlDetails,
   verifyUrlPassword,
 } from "../controllers/urlsController.js";
-
-const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 7);
 
 const router = express.Router();
 
@@ -43,7 +40,7 @@ router.post(
     body("description")
       .optional({ values: "null" })
       .isString()
-      .withMessage("Description must be a string"),
+      .withMessage("Description must be a string").escape(),
     body("password")
       .optional()
       .isLength({ min: 6 })
@@ -74,7 +71,7 @@ router.put(
     body("description")
       .optional({ values: "null" })
       .isString()
-      .withMessage("Description must be a string"),
+      .withMessage("Description must be a string").escape(),
     body("password")
       .optional({ checkFalsy: true })
       .isLength({ min: 6 })

@@ -4,6 +4,7 @@ import app from "../index.js";
 import getPrismaClient from "../src/configs/prisma.js";
 const prisma = getPrismaClient();
 import bcrypt from "bcrypt";
+import { unescape } from "validator";
 
 const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
 
@@ -418,7 +419,8 @@ describe("Mini URL API", () => {
           .set("Authorization", `Bearer ${userAuthToken}`)
           .send(payload);
         expect(res.statusCode).toEqual(200);
-        expect(res.body.url.description).toEqual(newDescription);
+        const unescapedDescription = unescape(res.body.url.description);
+        expect (unescapedDescription).toEqual(newDescription);
       });
       it("should be able to update isActive field", async () => {
         const urlRes = await request(app)

@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/page/page-detais
 router.get(
   "/page-details",
-  query("url").isURL().withMessage("Invalid URL format"),
+  query("url").isURL().withMessage("Invalid URL format").escape(),
   getPageDetails
 );
 

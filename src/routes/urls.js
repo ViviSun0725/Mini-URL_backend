@@ -1,11 +1,16 @@
 import express from "express";
-import { body, validationResult } from "express-validator";
+import { body } from "express-validator";
 import { customAlphabet } from "nanoid";
-import bcrypt from "bcrypt";
-import getPrismaClient from "../configs/prisma.js";
-const prisma = getPrismaClient();
 import authenticateToken from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
+import {
+  createShortUrl,
+  getMyUrls,
+  updateUrl,
+  deleteUrl,
+  getUrlDetails,
+  verifyUrlPassword,
+} from "../controllers/urlsController.js";
 
 const nanoid = customAlphabet("1234567890abcdefghijklmnopqrstuvwxyz", 7);
 
@@ -19,11 +24,12 @@ const shortenLimiter = rateLimit({
 
 const passwordVerifyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 5,
   message: "Too many requests, please try again after 15 minutes",
 });
 
 // Create a short URL
+// POST /api/urls/shorten
 router.post(
   "/shorten",
   authenticateToken,
@@ -47,110 +53,15 @@ router.post(
       .isBoolean()
       .withMessage("isActive must be a boolean"),
   ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-    const { originalUrl, customShortCode, password, description, isActive } =
-      req.body;
-
-    let finalShortCode = customShortCode;
-    if (customShortCode) {
-      const existingUrl = await prisma.url.findUnique({
-        where: { shortCode: customShortCode },
-      });
-      if (existingUrl) {
-        return res
-          .status(409)
-          .json({ error: "Custom short code already in use." });
-      }
-    } else {
-      finalShortCode = nanoid();
-    }
-
-    let hashedPassword = null;
-    if (password) {
-      hashedPassword = await bcrypt.hash(password, 10);
-    }
-
-    try {
-      const userId = req.user.userId;
-
-      // Check if custom short code already exists for the user
-      if (customShortCode) {
-        const existingUrl = await prisma.url.findUnique({
-          where: { shortCode: customShortCode, userId },
-        });
-        if (existingUrl) {
-          return res
-            .status(409)
-            .json({ error: "Custom short code already in use." });
-        }
-      }
-
-      const newUrl = await prisma.url.create({
-        data: {
-          originalUrl,
-          shortCode: finalShortCode,
-          customShortCode: customShortCode || null,
-          password: hashedPassword,
-          description: description || null,
-          isActive: isActive !== undefined ? isActive : true,
-          userId: req.user.userId,
-        },
-      });
-      const baseUrl =
-        process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
-      const shortUrl = `${baseUrl}/${newUrl.shortCode}`;
-
-      res
-        .status(200)
-        .json({
-          message: "URL shortened successfully",
-          shortUrl: shortUrl,
-          id: newUrl.id,
-        });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
+  createShortUrl
 );
 
 // Get all URLs for the authenticated user
-router.get("/my-urls", authenticateToken, async (req, res) => {
-  try {
-    const urls = await prisma.url.findMany({
-      where: {
-        userId: req.user.userId,
-      },
-      select: {
-        id: true,
-        originalUrl: true,
-        shortCode: true,
-        customShortCode: true,
-        description: true,
-        isActive: true,
-        createdAt: true,
-        password: true,
-      },
-    });
-
-    const responseUrls = urls.map(({ password, ...rest }) => {
-      return {
-        ...rest,
-        requiresPassword: !!password, // Indicate if the URL is password-protected
-      };
-    });
-    res.json(responseUrls);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+// GET /api/urls/my-urls
+router.get("/my-urls", authenticateToken, getMyUrls);
 
 // Update a URL for the authenticated user
+// PUT /api/urls/:id
 router.put(
   "/:id",
   authenticateToken,
@@ -169,119 +80,19 @@ router.put(
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long"),
   ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.error("Validation errors for URL update:", errors.array());
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { id } = req.params;
-    const { originalUrl, isActive, description, password } = req.body;
-
-    try {
-      const url = await prisma.url.findUnique({
-        where: { id: parseInt(id) },
-      });
-
-      if (!url) {
-        return res.status(404).json({ error: "URL not found" });
-      }
-
-      if (url.userId !== req.user.userId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      let hashedPassword = url.password;
-      if (password !== undefined) {
-        // Check if password field was sent in the request
-        if (password) {
-          // If password is not empty, hash and update
-          hashedPassword = await bcrypt.hash(password, 10);
-        } else {
-          // If password is explicitly empty, set to null (remove password)
-          hashedPassword = null;
-        }
-      }
-
-      const updatedUrl = await prisma.url.update({
-        where: { id: url.id },
-        data: {
-          originalUrl: originalUrl || url.originalUrl,
-          description:
-            description !== undefined ? description : url.description,
-          isActive: isActive !== undefined ? isActive : url.isActive,
-          password: hashedPassword,
-        },
-      });
-
-      res.json({ message: "URL updated successfully", url: updatedUrl });
-    } catch (err) {
-      console.error("Error updating URL:", err);
-      res.status(500).json({ error: "Server error during URL update." });
-    }
-  }
+  updateUrl
 );
 
 // Delete a URL for the authenticated user
-router.delete("/:id", authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  try {
-    const url = await prisma.url.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!url) {
-      return res.status(404).json({ error: "URL not found" });
-    }
-
-    if (url.userId !== req.user.userId) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    await prisma.url.delete({
-      where: { id: url.id },
-    });
-
-    res.json({ message: "URL deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Server error" });
-  }
-});
+// DELETE
+router.delete("/:id", authenticateToken, deleteUrl);
 
 // Get URL details (for frontend to check password status and description to on redirect page)
-router.get("/url-details/:shortCode", async (req, res) => {
-  const { shortCode } = req.params;
-  try {
-    const url = await prisma.url.findFirst({
-      where: {
-        OR: [{ shortCode: shortCode }, { customShortCode: shortCode }],
-      },
-      select: {
-        originalUrl: true,
-        password: true,
-        description: true,
-        isActive: true,
-      },
-    });
-
-    if (!url || !url.isActive) {
-      return res.status(404).json({ error: "URL not found or inactive." });
-    }
-
-    res.status(200).json({
-      originalUrl: url.originalUrl,
-      requiresPassword: !!url.password,
-      description: url.description,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server error");
-  }
-});
+// GET /api/urls/url-details/:shortCode
+router.get("/url-details/:shortCode", getUrlDetails);
 
 // Password verification for protected URLs
+// POST /api/urls/verify-password
 router.post(
   "/verify-password",
   passwordVerifyLimiter,
@@ -291,37 +102,6 @@ router.post(
       .withMessage("Short code is required"),
     body("password").isLength({ min: 1 }).withMessage("Password is required"),
   ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { shortCode, password } = req.body;
-
-    try {
-      const url = await prisma.url.findFirst({
-        where: {
-          OR: [{ shortCode: shortCode }, { customShortCode: shortCode }],
-        },
-      });
-
-      if (!url || !url.password) {
-        return res
-          .status(404)
-          .send("URL not found or does not require a password");
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, url.password);
-      if (isPasswordValid) {
-        res.json({ originalUrl: url.originalUrl });
-      } else {
-        res.status(401).send("Incorrect password");
-      }
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Server error" });
-    }
-  }
+  verifyUrlPassword
 );
 export default router;
